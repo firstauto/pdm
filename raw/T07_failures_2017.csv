@@ -1,0 +1,5 @@
+Turbine_ID,Component,Timestamp,Remarks
+T07,HYDRAULIC_GROUP,2017-06-17 11:35:00+00:00,Oil leakage in Hub
+T07,GENERATOR_BEARING,2017-08-20 06:08:00+00:00,Generator bearings damaged
+T07,GENERATOR,2017-08-21 14:47:00+00:00,Generator damaged
+T07,HYDRAULIC_GROUP,2017-10-19 10:11:00+00:00,Oil leakage in Hub

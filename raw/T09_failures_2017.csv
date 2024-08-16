@@ -1,0 +1,4 @@
+Turbine_ID,Component,Timestamp,Remarks
+T09,GENERATOR_BEARING,2017-01-25 12:55:00+00:00,Generator bearings replaced
+T09,HYDRAULIC_GROUP,2017-09-16 15:46:00+00:00,Pitch position error related GH
+T09,GEARBOX,2017-10-18 08:32:00+00:00,Gearbox noise
