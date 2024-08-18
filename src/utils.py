@@ -270,6 +270,17 @@ def save_model(model, results, target_dir, model_name, time):
     torch.save(obj=save_dict,
                f=model_save_path)
 
+# Prediction utils
+def load_model(model_variable, model_dir, trained_model_name, device):
+
+    # Load the model
+    model_dict = torch.load(f"{model_dir}/{trained_model_name}", map_location=torch.device(device), weights_only=False)
+    model_state_dict = model_dict['model_state_dict']
+    model_variable.load_state_dict(model_state_dict)
+    
+    return model_variable
+
+
 # define the adam optimizer
 def adam_optimizer(model, lr, betas, eps, weight_decay, amsgrad):
     optimizer = Adam(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, amsgrad=amsgrad)
@@ -285,15 +296,6 @@ def sgd_optimizer(model, lr, momentum, dampening, weight_decay, nesterov):
                           nesterov=nesterov)
     return optimizer
 
-# Prediction utils
-def load_model(model_variable, model_dir, trained_model_name, device):
-
-    # Load the model
-    model_dict = torch.load(f"{model_dir}/{trained_model_name}", map_location=torch.device(device), weights_only=False)
-    model_state_dict = model_dict['model_state_dict']
-    model_variable.load_state_dict(model_state_dict)
-    
-    return model_variable
 
 # Infer utils
 def infer(model, test_loaders, criterion, kalman_params, plot_name, device):

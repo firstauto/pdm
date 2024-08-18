@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from pyparsing import col
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -138,7 +139,7 @@ if __name__ == "__main__":
             comment=f"_model{args.MODEL_TYPE}_data_{args.DATA_TYPE}_seqlen{args.SEQ_LEN}"
         )
 
-        train_loaders, val_loaders, temp, total_time = data_process(
+        train_loaders, val_loaders, _, total_time = data_process(
             args.RAW_DIR,
             args.DATA_TYPE,
             args.CASE,
@@ -336,36 +337,38 @@ if __name__ == "__main__":
                 print("Number of anomaly samples: ", np.sum(anomalies))
                 print("Indices of anomaly samples: ", np.where(anomalies)[0])
                 anomalies_indices = np.where(anomalies)[0]
-                np.savetxt("org_anomalies_indices", anomalies_indices, delimiter=",")
 
     	        ###### NOTE NOTE NOTE ######
                 ###### NOTE NOTE NOTE ######
-                failures = pd.read_csv(args.RAW_DIR / "T06_failures_2017.csv")
-                matching_rows = failures[failures['Component'].str.lower().str.contains(system.lower(), case=False, na=False)]
-                failure_timestamps = matching_rows['Timestamp']
+                # failures = pd.read_csv(args.RAW_DIR / "T06_failures_2017.csv")
+                # matching_rows = failures[failures['Component'].str.lower().str.contains(system.lower(), case=False, na=False)]
+                # failure_timestamps = matching_rows['Timestamp']
 
-                failure_timestamps = pd.to_datetime(failure_timestamps)
-                # closest_time_before_failure = test_time[test_time < failure_timestamps].max() # type: ignore
+                # failure_timestamps = pd.to_datetime(failure_timestamps)
+                # step_size = test_time.shape[0] // test_data_len # type: ignore
+                # ind = np.arange(0, test_time.shape[0], step_size) # type: ignore
+                # _test_time = test_time[ind] # type: ignore
 
-                indx = []
-                for failure_timestamp in failure_timestamps:
-                    # Find the closest time before the failure timestamp
-                    closest_time_before_failure = test_time[test_time < failure_timestamp].max() # type: ignore
 
-                    # Find the index of the closest time
-                    index = np.where(test_time == closest_time_before_failure)[0]
-                    if len(index) > 0:
-                        indx.append(index[0])
+                # indx = []
+                # for failure_timestamp in failure_timestamps:
+                #     # Find the closest time before the failure timestamp
+                #     closest_time_before_failure = _test_time[test_time < failure_timestamp].max() # type: ignore
 
-                n = 5
-                for i in range(0, n*s_len, 16):
-                    temp = indx[0] - n*s_len + i
-                    time_stamp = test_time[indx[0] - n*s_len + i : indx[0] - (n-1)*s_len + i] # type: ignore
-                    plot_name = "_".join(model_parameters[:8])
-                    anomaly_plot(output_dic['inputs'], output_dic['outputs'], temp, system_features, time_stamp, plot_name)
+                #     # Find the index of the closest time
+                #     index = np.where(_test_time == closest_time_before_failure)[0]
+                #     if len(index) > 0:
+                #         indx.append(index[0])
+
+
+                # n = 5
+                # for i in range(0, n*s_len, 16):
+                #     temp = indx[0] - n*s_len + i
+                #     time_stamp = test_time[indx[0] - n*s_len + i : indx[0] - (n-1)*s_len + i] # type: ignore
+                #     plot_name = "_".join(model_parameters[:8])
+                #     anomaly_plot(output_dic['inputs'], output_dic['outputs'], temp, system_features, time_stamp, plot_name)
                 ###### NOTE NOTE NOTE ######
                 ###### NOTE NOTE NOTE ######
-
 
                 # output_dic["anomalies"] = anomalies
                 # for i in anomalies_indices:
@@ -373,43 +376,61 @@ if __name__ == "__main__":
                 #     plot_name = "_".join(model_parameters[:8])
                 #     anomaly_plot(output_dic['inputs'], output_dic['outputs'], i, system_features, time_stamp, plot_name)
 
+                # Save the results
+                os.makedirs(f"{os.getcwd()}/results/anomalies/", exist_ok=True)
+                np.savetxt(f"{os.getcwd()}/results/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
 
-                df = pd.DataFrame(output_dic)
-                df.to_csv(
-                    f"{str(args.RAW_DIR)[:-4]}/results/logs/{model_name[:-4]}_{tm}.csv",
+                features = selected_features(system)
+                inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
+                outputs = pd.DataFrame(output_dic["outputs"].reshape(-1, len(selected_features(system))), columns=features)
+                time_stamps = pd.Series(test_time[:inputs.shape[0]]) # type: ignore
+
+                input_df = pd.concat((time_stamps, inputs), axis=1)
+                columns = ["Timestamp", *features]
+                input_df.columns = columns
+                os.makedirs(f"{os.getcwd()}/results/preds/", exist_ok=True)
+                input_df.to_csv(
+                    f"{os.getcwd()}/results/preds/{model_name[:-4]}_{tm}_input.csv",
+                    index=False,
+                )
+
+                recon_df = pd.concat((time_stamps, outputs), axis=1)
+                recon_df.columns = columns
+                recon_df.to_csv(
+                    f"{os.getcwd()}/results/preds/{model_name[:-4]}_{tm}_recon.csv",
                     index=False,
                 )
                 break
 
-            # Start the timer
-            start_time = timer()
+        #     # Start the timer
+        #     start_time = timer()
 
-            y_true, y_pred = infer(
-                model_t, train_loaders, loss_fn, [0, 0.5], model_name[:-4], device
-            )
-            # End the timer and print out how long it took
-            end_time = timer()
-            print(f"[INFO] Total inference time: {end_time - start_time:.3f} seconds")
+        #     y_true, y_pred = infer(
+        #         model_t, train_loaders, loss_fn, [0, 0.5], model_name[:-4], device
+        #     )
+        #     # End the timer and print out how long it took
+        #     end_time = timer()
+        #     print(f"[INFO] Total inference time: {end_time - start_time:.3f} seconds")
 
-            # compute average rmse and mae.
-            # save the metric along with models parameters
-            rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
-            mae = np.mean(np.abs(y_true - y_pred))
-            print(f"RMSE: {rmse}, MAE: {mae}")
+        #     # compute average rmse and mae.
+        #     # save the metric along with models parameters
+        #     rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
+        #     mae = np.mean(np.abs(y_true - y_pred))
+        #     print(f"RMSE: {rmse}, MAE: {mae}")
 
-            results["batch_size"].append(b_size)
-            results["seq_len"].append(s_len)
-            results["hidden_size"].append(h_size)
-            results["layers"].append(n_layers)
-            results["n_heads"].append(n_heads)
-            results["l_rate"].append(l_rate)
-            results["dropout"].append(dropout)
-            results["RMSE"].append(rmse)
-            results["MAE"].append(mae)
+        #     results["batch_size"].append(b_size)
+        #     results["seq_len"].append(s_len)
+        #     results["hidden_size"].append(h_size)
+        #     results["layers"].append(n_layers)
+        #     results["n_heads"].append(n_heads)
+        #     results["l_rate"].append(l_rate)
+        #     results["dropout"].append(dropout)
+        #     results["RMSE"].append(rmse)
+        #     results["MAE"].append(mae)
 
-        # save models_results file as csv
-        if tm != "latest":
-            df = pd.DataFrame(data=results)
-            _dir = f"{str(args.RAW_DIR)[:-4]}/results/"
-            os.makedirs(_dir, exist_ok=True)
-            df.to_csv(f"{_dir}{date_string}_results.csv", index=False)
+        # # save models_results file as csv
+        # if tm != "latest":
+        #     df = pd.DataFrame(data=results)
+        #     _dir = f"{str(args.RAW_DIR)[:-4]}/results/"
+        #     os.makedirs(_dir, exist_ok=True)
+        #     df.to_csv(f"{_dir}{date_string}_results.csv", index=False)

@@ -79,11 +79,11 @@ def to_sequences(data, seq_len):
         data_seq.append(scaled_data[i : i + seq_len])
     return np.array(data_seq)
 
-def tumbling_window(data, seq_len):
+def tumbling_window(data, seq_len, step_size):
     scaler = MinMaxScaler(feature_range=(-1, 1))
     scaled_data = scaler.fit_transform(data)
     data_seq = []
-    for i in range(0, len(scaled_data) - seq_len + 1, seq_len//2):
+    for i in range(0, len(scaled_data) - seq_len + 1, step_size):
         data_seq.append(scaled_data[i : i + seq_len])
     return np.array(data_seq)
 
@@ -106,16 +106,16 @@ def data_process(raw_dir, data_type, case, seq_len, batch_size, system, val_spli
     removed_indices = df_turbine[df_turbine['Gen_RPM_Avg'] <= first_bin_max].index
 
     _df_turbine = df_turbine.drop(removed_indices, errors='ignore')
-    _time_stamp = pd.to_datetime(_df_turbine["Timestamp"], format="mixed")
+    train_time_stamp = pd.to_datetime(_df_turbine["Timestamp"], format="mixed")
     _df_turbine = _df_turbine[features]
 
     data = to_sequences(_df_turbine, seq_len)
 
     if case == "test":
-        time_stamp = pd.to_datetime(df_turbine["Timestamp"], format="mixed")
+        test_time_stamp = pd.to_datetime(df_turbine["Timestamp"], format="mixed")
         df_turbine = df_turbine[features]
-        # test_data = tumbling_window(df_turbine, seq_len)
-        test_data = to_sequences(df_turbine, seq_len)
+        test_data = tumbling_window(df_turbine, seq_len, seq_len)
+        # test_data = to_sequences(df_turbine, seq_len)
 
         test_dataset = ArrayDataset(test_data, None, data_details=tick)
         test_loaders = [DataLoader(test_dataset, batch_size=batch_size, shuffle=False)]
@@ -124,7 +124,7 @@ def data_process(raw_dir, data_type, case, seq_len, batch_size, system, val_spli
         train_loaders = [DataLoader(train_dataset, batch_size=batch_size, shuffle=True)]
 
         print(f"Test data seqs: {len(test_data)}")
-        return test_loaders, train_loaders, time_stamp, _time_stamp
+        return test_loaders, train_loaders, test_time_stamp, train_time_stamp
     
     train_data = data[: int(len(data) * (1 - val_split_ratio))]
     val_data = data[int(len(data) * (1 - val_split_ratio)) :]
@@ -136,7 +136,7 @@ def data_process(raw_dir, data_type, case, seq_len, batch_size, system, val_spli
     val_loaders = [DataLoader(val_dataset, batch_size=batch_size, shuffle=False)]
 
     print(f"Total data seqs: {len(data)} || Train data seqs: {len(train_data)} || Val data seqs: {len(val_data)}")
-    return train_loaders, val_loaders, None, _time_stamp
+    return train_loaders, val_loaders, None, train_time_stamp
 
 class ArrayDataset(Dataset):
     all_dataset_names = []
