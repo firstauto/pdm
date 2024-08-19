@@ -135,9 +135,6 @@ if __name__ == "__main__":
         raise ValueError(f"Invalid loss function: {args.LOSS_FN}")
 
     if args.CASE == "train":
-        writer = SummaryWriter(
-            comment=f"_model{args.MODEL_TYPE}_data_{args.DATA_TYPE}_seqlen{args.SEQ_LEN}"
-        )
 
         train_loaders, val_loaders, _, total_time = data_process(
             args.RAW_DIR,
@@ -152,9 +149,9 @@ if __name__ == "__main__":
         batch_data = next(iter(val_loaders[0]))  # type: ignore
         model_t = select_model(
             model_type=args.MODEL_TYPE,
-            input_size=args.SEQ_LEN,
+            input_size=batch_data[0].shape[-1],
             emb_size=args.EMB_SIZE,
-            seq_len=batch_data[0].shape[-1],
+            seq_len=args.SEQ_LEN,
             num_heads=args.NUM_HEADS,
             hidden_size=args.HIDDEN_SIZE,
             enc_layers=args.ENC_LAYERS,
@@ -210,6 +207,9 @@ if __name__ == "__main__":
 
         es = EarlyStopping(patience=15, min_delta=0.000001)  # type: ignore
 
+        writer = SummaryWriter(
+            comment=f"_model{args.MODEL_TYPE}_data_{args.DATA_TYPE}_seqlen{args.SEQ_LEN}"
+        )
         # Start the timer
         start_time = timer()
         model_result = train_and_evaluate(
@@ -290,9 +290,9 @@ if __name__ == "__main__":
             batch_data = next(iter(test_loaders[0]))  # type: ignore
             model_t = select_model(
                 model_type=model,
-                input_size=s_len,
+                input_size=batch_data[0].shape[-1],
                 emb_size=e_size,
-                seq_len=batch_data[0].shape[-1],  # type: ignore
+                seq_len=s_len,  # type: ignore
                 hidden_size=h_size,
                 enc_layers=n_layers,
                 dec_layers=s_layers,
@@ -320,7 +320,7 @@ if __name__ == "__main__":
                     )
 
                 # Get reconstruction loss threshold.
-                threshold = np.percentile(train_loss, 99)
+                threshold = np.percentile(train_loss, 97)
                 print("Reconstruction error threshold: ", threshold)
 
                 start_time = timer()

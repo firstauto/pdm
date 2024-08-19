@@ -200,7 +200,7 @@ def select_model(model_type, input_size, emb_size, seq_len, hidden_size,
     
     elif model_type == 'tfm':
         return AD_TFM(d_model=input_size, emb_size=emb_size, nhead=num_heads, seq_len=seq_len, num_encoder_layers=enc_layers,
-                      num_decoder_layers=dec_layers, dim_feedforward=seq_len*2, activation=nn.ReLU(), dropout=dropout,
+                      num_decoder_layers=dec_layers, dim_feedforward=hidden_size, activation=nn.ReLU(), dropout=dropout,
                       norm_first=False).to(device)
     # elif model_type == 'tf':
     #     return TimeSeriesTransformer(num_features=seq_len, d_model=emb_size, nhead=num_heads, num_encoder_layers=enc_layers,

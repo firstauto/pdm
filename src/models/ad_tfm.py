@@ -1,3 +1,4 @@
+from turtle import xcor
 import torch
 import torch.nn as nn
 
@@ -53,11 +54,11 @@ class AD_TFM(nn.Module):
         # self.output_layer = nn.Linear(emb_size, d_model, bias=False)
 
         encoder_embedding = nn.Parameter(
-            torch.rand((1, seq_len, d_model), requires_grad=True) * 2 - 1
+            torch.rand((1, d_model, seq_len), requires_grad=True) * 2 - 1
         )
         self.register_parameter("encoder_embedding", encoder_embedding)
         decoder_embedding = nn.Parameter(
-            torch.rand((1, seq_len, d_model), requires_grad=True) * 2 - 1
+            torch.rand((1, d_model, seq_len), requires_grad=True) * 2 - 1
         )
         self.register_parameter("decoder_embedding", decoder_embedding)
 
@@ -87,11 +88,11 @@ class TransformerEncoder(nn.Module):
         super(TransformerEncoder, self).__init__()
         self.norm = norm_first
         self.self_attn = nn.MultiheadAttention(
-            d_model, nhead, dropout=dropout, batch_first=True
+            seq_len, nhead, dropout=dropout, batch_first=True
         )
         self.ffn = ConvLayer(d_model, dim_feedforward, activation, dropout=dropout)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.BatchNorm1d(seq_len)
+        self.norm1 = nn.LayerNorm(seq_len)
+        self.norm2 = nn.BatchNorm1d(d_model)
         self.dropout1 = nn.Dropout(dropout)
         self.dropout = nn.Dropout(dropout)
 
@@ -126,15 +127,15 @@ class TransformerDecoder(nn.Module):
         super(TransformerDecoder, self).__init__()
         self.norm = norm_first
         self.self_attn = nn.MultiheadAttention(
-            d_model, nhead, dropout=dropout, batch_first=True
+            seq_len, nhead, dropout=dropout, batch_first=True
         )
         self.multihead_attn = nn.MultiheadAttention(
-            d_model, nhead, dropout=dropout, batch_first=True
+            seq_len, nhead, dropout=dropout, batch_first=True
         )
         self.ffn = ConvLayer(d_model, dim_feedforward, activation, dropout=dropout)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
-        self.norm3 = nn.BatchNorm1d(seq_len)
+        self.norm1 = nn.LayerNorm(seq_len)
+        self.norm2 = nn.LayerNorm(seq_len)
+        self.norm3 = nn.BatchNorm1d(d_model)
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
         self.dropout3 = nn.Dropout(dropout)
@@ -181,7 +182,7 @@ class ConvLayer(nn.Module):
         self.dropout1 = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = x.transpose(1, 2)
+        x = x
         x = self.activation(self.conv1(x))
         x = self.conv2(self.dropout1(x))
-        return x.transpose(1, 2)
+        return x

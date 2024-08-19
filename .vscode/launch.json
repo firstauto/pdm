@@ -1,0 +1,37 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\src\\main.py",
+            "console": "integratedTerminal",
+            "env": {"PYDEVD_DISABLE_FILE_VALIDATION": "1"},
+            "args": ["--RAW_DIR", "G:/turbine_ad/raw/", 
+            "--MODEL_DIR",  "G:/turbine_ad/trained_models/", "--MODEL_TYPE", "tfm", "--DATA_TYPE", "2017",
+            "--CASE", "train", "--SYSTEM", "gearbox", "--BATCH_SIZE", "64", "--EPOCHS", "500", "--LEARNING_RATE", "0.001", 
+            "--LEARNING", "unsup", "--SEQ_LEN", "128", "--HIDDEN_SIZE", "512", "--ENC_LAYERS", "4", "--DEC_LAYERS", "4", 
+            "--NUM_HEADS", "16", "--EMB_SIZE", "128", "--VAL_SPLIT", "0.3", "--DROPOUT", "0.1", "--LOSS_FN", "mse", 
+            "--OPTIMIZER", "adam", "--SCHEDULER", "cosine", "--NUM_WORKERS", "4"]
+        },
+        {
+            "name": "Test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\src\\main.py",
+            "console": "integratedTerminal",
+            "env": {"PYDEVD_DISABLE_FILE_VALIDATION": "1"},
+            "args": ["--RAW_DIR", "G:/turbine_ad/raw/", 
+            "--MODEL_DIR",  "G:/turbine_ad/trained_models/", "--MODEL_TYPE", "incept", "--DATA_TYPE", "2017",
+            "--CASE", "test", "--SYSTEM", "gearbox", "--BATCH_SIZE", "512", "--EPOCHS", "500", "--LEARNING_RATE", "0.001",
+            "--LEARNING", "unsup", 
+            "--SEQ_LEN", "256", "--HIDDEN_SIZE", "128", "--ENC_LAYERS", "2", "--DEC_LAYERS", "2", "--NUM_HEADS", "4", 
+            "--EMB_SIZE", "512", "--VAL_SPLIT", "0.4", 
+            "--DROPOUT", "0.3", "--LOSS_FN", "mse", "--OPTIMIZER", "adam", "--SCHEDULER", "cosine", "--NUM_WORKERS", "4"]
+        }
+    ]
+}

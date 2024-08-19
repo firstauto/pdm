@@ -1,0 +1,5 @@
+*.png
+/visuals
+/visuals/*
+/runs
+/runs/*
