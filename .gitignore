@@ -3,3 +3,5 @@
 /visuals/*
 /runs
 /runs/*
+*.csv
+test.ipynb

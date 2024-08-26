@@ -110,7 +110,7 @@ def plot_output(targets, outputs, plot_name):
     return targets, outputs
 
 
-def plot_output_recon(targets, outputs, num_sample, features, time_stamp, plot_name):
+def plot_output_recon(targets, outputs, num_sample, system, features, time_stamp, plot_name):
 
     # Ensure time_stamp is a DataFrame and contains datetime data
     stamp = pd.DataFrame(time_stamp, columns=['Timestamp'])
@@ -150,7 +150,7 @@ def plot_output_recon(targets, outputs, num_sample, features, time_stamp, plot_n
     plt.tight_layout()
 
     # Ensure the directory exists and save the plot
-    dir = 'G:/turbine_ad/visuals/'
+    dir = f'{os.getcwd()}/visuals/{system}/'
     os.makedirs(dir, exist_ok=True)
     
     plt.savefig(f"{dir}{plot_name}_{num_sample}_normal.png", dpi=600)
@@ -158,7 +158,7 @@ def plot_output_recon(targets, outputs, num_sample, features, time_stamp, plot_n
 
 
 
-def anomaly_plot(targets, outputs, anomaly_idx, features, time_stamp, plot_name):
+def anomaly_plot(targets, outputs, anomaly_idx, system, features, time_stamp, plot_name):
     # Ensure time_stamp is a DataFrame and contains datetime data
     stamp = pd.DataFrame(time_stamp, columns=['Timestamp'])
     stamp['Timestamp'] = pd.to_datetime(stamp['Timestamp'])  # Convert to datetime if not already
@@ -197,7 +197,7 @@ def anomaly_plot(targets, outputs, anomaly_idx, features, time_stamp, plot_name)
     plt.tight_layout()
 
     # Ensure the directory exists and save the plot
-    dir = 'G:/turbine_ad/visuals/'
+    dir = f'{os.getcwd()}/visuals/{system}/'
     os.makedirs(dir, exist_ok=True)
     
     plt.savefig(f"{dir}{plot_name}_{stamp['date'].iloc[0]}_{anomaly_idx}.png", dpi=600)

@@ -18,13 +18,13 @@ class AD_TFM(nn.Module):
         norm_first=False,
     ):
         super(AD_TFM, self).__init__()
-        # self.emb_in = nn.Linear(d_model, emb_size, bias=False)
-        # self.emb_out = nn.Linear(d_model, emb_size, bias=False)
+        self.emb_in = nn.Linear(d_model, emb_size, bias=True)
+        self.emb_out = nn.Linear(d_model, emb_size, bias=True)
 
         self.encoder = nn.ModuleList(
             [
                 TransformerEncoder(
-                    d_model,
+                    emb_size,
                     nhead,
                     seq_len,
                     dim_feedforward,
@@ -39,7 +39,7 @@ class AD_TFM(nn.Module):
         self.decoder = nn.ModuleList(
             [
                 TransformerDecoder(
-                    d_model,
+                    emb_size,
                     nhead,
                     seq_len,
                     dim_feedforward,
@@ -51,27 +51,40 @@ class AD_TFM(nn.Module):
             ]
         )
 
-        # self.output_layer = nn.Linear(emb_size, d_model, bias=False)
+        self.output_layer = nn.Linear(emb_size, d_model, bias=True)
 
         encoder_embedding = nn.Parameter(
-            torch.rand((1, d_model, seq_len), requires_grad=True) * 2 - 1
+            torch.rand((1, seq_len, emb_size), requires_grad=True) * 2 - 1
         )
         self.register_parameter("encoder_embedding", encoder_embedding)
         decoder_embedding = nn.Parameter(
-            torch.rand((1, d_model, seq_len), requires_grad=True) * 2 - 1
+            torch.rand((1, seq_len, emb_size), requires_grad=True) * 2 - 1
         )
         self.register_parameter("decoder_embedding", decoder_embedding)
 
     def forward(self, src, tgt):
-        memory = self.encoder_embedding + src.permute(0, 2, 1)
+
+        src = self.emb_in(src)
+        tgt = self.emb_out(tgt)
+
+        memory = self.encoder_embedding + src
+        output = self.decoder_embedding + tgt
+
+        tgt_mask = self.create_causal_mask(src.size(1), src.device)
+
         for layer in self.encoder:
             memory = layer(memory)
-        output = self.decoder_embedding + tgt.permute(0, 2, 1)
-        for layer in self.decoder:
-            output = layer(output, memory)
 
-        # output = self.output_layer(output)
-        return output.permute(0, 2, 1)
+        for layer in self.decoder:
+            output = layer(output, memory, tgt_mask)
+
+        output = self.output_layer(output)
+        return output
+    
+    def create_causal_mask(self, seq_len, device):
+        # Create a lower triangular matrix filled with ones, with zeros in the upper triangle
+        mask = torch.tril(torch.ones((seq_len, seq_len), device=device)).float()
+        return mask#.unsqueeze(0).repeat(1024, 1, 1)
 
 
 class TransformerEncoder(nn.Module):
@@ -88,11 +101,11 @@ class TransformerEncoder(nn.Module):
         super(TransformerEncoder, self).__init__()
         self.norm = norm_first
         self.self_attn = nn.MultiheadAttention(
-            seq_len, nhead, dropout=dropout, batch_first=True
+            d_model, nhead, dropout=dropout, batch_first=True
         )
-        self.ffn = ConvLayer(d_model, dim_feedforward, activation, dropout=dropout)
-        self.norm1 = nn.LayerNorm(seq_len)
-        self.norm2 = nn.BatchNorm1d(d_model)
+        self.ffn = ConvLayer(seq_len, dim_feedforward, activation, dropout=dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.BatchNorm1d(seq_len)
         self.dropout1 = nn.Dropout(dropout)
         self.dropout = nn.Dropout(dropout)
 
@@ -127,25 +140,28 @@ class TransformerDecoder(nn.Module):
         super(TransformerDecoder, self).__init__()
         self.norm = norm_first
         self.self_attn = nn.MultiheadAttention(
-            seq_len, nhead, dropout=dropout, batch_first=True
+            d_model, nhead, dropout=dropout, batch_first=True
         )
         self.multihead_attn = nn.MultiheadAttention(
-            seq_len, nhead, dropout=dropout, batch_first=True
+            d_model, nhead, dropout=dropout, batch_first=True
         )
-        self.ffn = ConvLayer(d_model, dim_feedforward, activation, dropout=dropout)
-        self.norm1 = nn.LayerNorm(seq_len)
-        self.norm2 = nn.LayerNorm(seq_len)
-        self.norm3 = nn.BatchNorm1d(d_model)
+
+        self.ffn = ConvLayer(seq_len, dim_feedforward, activation, dropout=dropout)
+
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.BatchNorm1d(seq_len)
+
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
         self.dropout3 = nn.Dropout(dropout)
         self.dropout4 = nn.Dropout(dropout)
 
-    def forward(self, tgt, memory):
+    def forward(self, tgt, memory, mask):
         tgt2 = tgt
         if self.norm:
             tgt2 = self.norm1(tgt2)
-        tgt2 = self.dropout3(self.self_attn(tgt2, tgt2, tgt2)[0])
+        tgt2 = self.dropout3(self.self_attn(tgt2, tgt2, tgt2, attn_mask=mask)[0])
         if not self.norm:
             tgt2 = self.norm1(tgt2)
         tgt = tgt + tgt2

@@ -173,7 +173,7 @@ if __name__ == "__main__":
                 lr=args.LEARNING_RATE,
                 betas=(0.9, 0.999),
                 eps=1e-08,
-                weight_decay=0,
+                weight_decay=0.,
                 amsgrad=True,
             )
         elif args.OPTIMIZER == "rmsprop":
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                 lr=args.LEARNING_RATE,
                 alpha=0.99,
                 eps=1e-08,
-                weight_decay=0.01,
+                weight_decay=1e-5,
                 momentum=0.9,
                 centered=False,
             )
@@ -192,7 +192,7 @@ if __name__ == "__main__":
                 lr=args.LEARNING_RATE,
                 momentum=0.9,
                 dampening=0,
-                weight_decay=0.01,
+                weight_decay=0.,
                 nesterov=True,
             )
         else:
@@ -202,7 +202,7 @@ if __name__ == "__main__":
             type=args.SCHEDULER,
             optimizer=optimizer,
             max_lr=args.LEARNING_RATE,
-            min_lr=args.LEARNING_RATE / 1000,
+            min_lr=args.LEARNING_RATE / 100,
         )
 
         es = EarlyStopping(patience=15, min_delta=0.000001)  # type: ignore
@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
     elif args.CASE == "test":
 
-        tm = "latest"
+        tm = "all"
         model_dir = f"{args.MODEL_DIR}/{args.DATA_TYPE}/"
         model_names = list(Path(model_dir).glob("*.pth"))
         model_names.sort(key=lambda x: x.stat().st_mtime, reverse=True)
@@ -316,11 +316,11 @@ if __name__ == "__main__":
                     tack_time = train_time[i * s_len : (i + 1) * s_len]
                     plot_name = "_".join(model_parameters[:8])
                     plot_output_recon(
-                        output_dic['inputs'], output_dic['outputs'], i, system_features, tack_time, plot_name
+                        output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
                     )
 
                 # Get reconstruction loss threshold.
-                threshold = np.percentile(train_loss, 97)
+                threshold = np.percentile(train_loss, 98.5)
                 print("Reconstruction error threshold: ", threshold)
 
                 start_time = timer()
@@ -370,15 +370,15 @@ if __name__ == "__main__":
                 ###### NOTE NOTE NOTE ######
                 ###### NOTE NOTE NOTE ######
 
-                # output_dic["anomalies"] = anomalies
-                # for i in anomalies_indices:
-                #     time_stamp = test_time[i * s_len//2 : ((i + 1) * s_len//2) + s_len//2] # type: ignore
-                #     plot_name = "_".join(model_parameters[:8])
-                #     anomaly_plot(output_dic['inputs'], output_dic['outputs'], i, system_features, time_stamp, plot_name)
+                output_dic["anomalies"] = anomalies
+                for i in anomalies_indices:
+                    time_stamp = test_time[i * s_len : ((i + 1) * s_len)] # type: ignore
+                    plot_name = "_".join(model_parameters[:8])
+                    anomaly_plot(output_dic['inputs'], output_dic['outputs'], i, system, system_features, time_stamp, plot_name)
 
                 # Save the results
-                os.makedirs(f"{os.getcwd()}/results/anomalies/", exist_ok=True)
-                np.savetxt(f"{os.getcwd()}/results/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
+                os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
+                np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
 
                 features = selected_features(system)
                 inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
@@ -388,49 +388,79 @@ if __name__ == "__main__":
                 input_df = pd.concat((time_stamps, inputs), axis=1)
                 columns = ["Timestamp", *features]
                 input_df.columns = columns
-                os.makedirs(f"{os.getcwd()}/results/preds/", exist_ok=True)
+
+                save_dir = f"{os.getcwd()}/results/preds/{system}/"
+                os.makedirs(f"{save_dir}", exist_ok=True)
+
                 input_df.to_csv(
-                    f"{os.getcwd()}/results/preds/{model_name[:-4]}_{tm}_input.csv",
+                    f"{save_dir}/{model_name[:-4]}_{tm}_input.csv",
                     index=False,
                 )
 
                 recon_df = pd.concat((time_stamps, outputs), axis=1)
                 recon_df.columns = columns
+
                 recon_df.to_csv(
-                    f"{os.getcwd()}/results/preds/{model_name[:-4]}_{tm}_recon.csv",
+                    f"{save_dir}/{model_name[:-4]}_{tm}_recon.csv",
                     index=False,
                 )
                 break
 
-        #     # Start the timer
-        #     start_time = timer()
+            
+            output_dic, train_loss = infer_recon(model_t, train_loaders, device)
 
-        #     y_true, y_pred = infer(
-        #         model_t, train_loaders, loss_fn, [0, 0.5], model_name[:-4], device
-        #     )
-        #     # End the timer and print out how long it took
-        #     end_time = timer()
-        #     print(f"[INFO] Total inference time: {end_time - start_time:.3f} seconds")
+            for i in range(5):
+                tack_time = train_time[i * s_len : (i + 1) * s_len]
+                plot_name = "_".join(model_parameters[:8])
+                plot_output_recon(
+                    output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
+                )
 
-        #     # compute average rmse and mae.
-        #     # save the metric along with models parameters
-        #     rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
-        #     mae = np.mean(np.abs(y_true - y_pred))
-        #     print(f"RMSE: {rmse}, MAE: {mae}")
+            # Get reconstruction loss threshold.
+            threshold = np.percentile(train_loss, 98.5)
+            print("Reconstruction error threshold: ", threshold)
 
-        #     results["batch_size"].append(b_size)
-        #     results["seq_len"].append(s_len)
-        #     results["hidden_size"].append(h_size)
-        #     results["layers"].append(n_layers)
-        #     results["n_heads"].append(n_heads)
-        #     results["l_rate"].append(l_rate)
-        #     results["dropout"].append(dropout)
-        #     results["RMSE"].append(rmse)
-        #     results["MAE"].append(mae)
+            start_time = timer()
+            output_dic, test_loss = infer_recon(model_t, test_loaders, device)
+            end_time = timer()
 
-        # # save models_results file as csv
-        # if tm != "latest":
-        #     df = pd.DataFrame(data=results)
-        #     _dir = f"{str(args.RAW_DIR)[:-4]}/results/"
-        #     os.makedirs(_dir, exist_ok=True)
-        #     df.to_csv(f"{_dir}{date_string}_results.csv", index=False)
+            print(
+                f"[INFO] Total inference time: {end_time - start_time:.3f} seconds"
+            )
+
+            # Detect all the samples which are anomalies.
+            anomalies = test_loss > threshold
+            anomalies = np.any(anomalies, axis=1)
+            print("Number of anomaly samples: ", np.sum(anomalies))
+            print("Indices of anomaly samples: ", np.where(anomalies)[0])
+            anomalies_indices = np.where(anomalies)[0]
+
+
+            # Save the results
+            os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
+            np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
+
+            features = selected_features(system)
+            inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
+            outputs = pd.DataFrame(output_dic["outputs"].reshape(-1, len(selected_features(system))), columns=features)
+            time_stamps = pd.Series(test_time[:inputs.shape[0]]) # type: ignore
+
+            input_df = pd.concat((time_stamps, inputs), axis=1)
+            columns = ["Timestamp", *features]
+            input_df.columns = columns
+
+            save_dir = f"{os.getcwd()}/results/preds/{system}/"
+            os.makedirs(f"{save_dir}", exist_ok=True)
+
+            input_df.to_csv(
+                f"{save_dir}/{model_name[:-4]}_{tm}_input.csv",
+                index=False,
+            )
+
+            recon_df = pd.concat((time_stamps, outputs), axis=1)
+            recon_df.columns = columns
+
+            recon_df.to_csv(
+                f"{save_dir}/{model_name[:-4]}_{tm}_recon.csv",
+                index=False,
+            )
