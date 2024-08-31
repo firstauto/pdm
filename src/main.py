@@ -57,6 +57,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--DATA_TYPE", type=str, help="data type for training, i.e. '2017' or '2016'"
     )
+    parser.add_argument("--TURBINE_ID", type=str, help="turbine id for training")
     parser.add_argument(
         "--CASE",
         type=str,
@@ -139,6 +140,7 @@ if __name__ == "__main__":
         train_loaders, val_loaders, _, total_time = data_process(
             args.RAW_DIR,
             args.DATA_TYPE,
+            args.TURBINE_ID,
             args.CASE,
             args.SEQ_LEN,
             args.BATCH_SIZE,
@@ -232,9 +234,9 @@ if __name__ == "__main__":
         print(f"[INFO] Total training time: {end_time - start_time:.3f} seconds")
 
         save_name = (
-            f"{date_string}_model{args.MODEL_TYPE}_data{args.DATA_TYPE}_system{args.SYSTEM}_valsplit{args.VAL_SPLIT}"
-            f"_batchsize{args.BATCH_SIZE}_seqlen{args.SEQ_LEN}_hiddensize{args.HIDDEN_SIZE}"
-            f"_enclayers{args.ENC_LAYERS}_declayers{args.DEC_LAYERS}_embsize{args.EMB_SIZE}"
+            f"{date_string}_model{args.MODEL_TYPE}_data{args.DATA_TYPE}_tubineid{args.TURBINE_ID}_"
+            f"system{args.SYSTEM}_valsplit{args.VAL_SPLIT}_batchsize{args.BATCH_SIZE}_seqlen{args.SEQ_LEN}"
+            f"_hiddensize{args.HIDDEN_SIZE}_enclayers{args.ENC_LAYERS}_declayers{args.DEC_LAYERS}_embsize{args.EMB_SIZE}"
             f"_numheads{args.NUM_HEADS}_lrate{args.LEARNING_RATE}_dropout{args.DROPOUT}.pth"
         )
 
@@ -255,7 +257,7 @@ if __name__ == "__main__":
 
     elif args.CASE == "test":
 
-        tm = "all"
+        tm = "latest"
         model_dir = f"{args.MODEL_DIR}/{args.DATA_TYPE}/"
         model_names = list(Path(model_dir).glob("*.pth"))
         model_names.sort(key=lambda x: x.stat().st_mtime, reverse=True)
@@ -276,15 +278,16 @@ if __name__ == "__main__":
             model_parameters = model_name.split("_")
             model = model_parameters[5][5:]
             data_type = model_parameters[6][4:]
-            system = model_parameters[7][6:]
+            turbine_id = model_parameters[7][8:]
+            system = model_parameters[8][6:]
             l_rate = model_parameters[-2][5:]
             dropout = model_parameters[-1][7:-4]
             val_split, b_size, s_len, h_size, n_layers, s_layers, e_size, n_heads = (
-                extracting_parameters(model_parameters[8:-2])
+                extracting_parameters(model_parameters[9:-2])
             )
 
             test_loaders, train_loaders, test_time, train_time = data_process(
-                args.RAW_DIR, data_type, args.CASE, s_len, b_size, system, val_split
+                args.RAW_DIR, data_type, turbine_id, args.CASE, s_len, b_size, system, val_split
             )
 
             batch_data = next(iter(test_loaders[0]))  # type: ignore
@@ -308,7 +311,7 @@ if __name__ == "__main__":
 
             system_features = selected_features(system)
 
-            if tm == "latest":
+            if tm == "all":
 
                 output_dic, train_loss = infer_recon(model_t, train_loaders, device)
 
@@ -320,7 +323,7 @@ if __name__ == "__main__":
                     )
 
                 # Get reconstruction loss threshold.
-                threshold = np.percentile(train_loss, 98.5)
+                threshold = np.percentile(train_loss, 99)
                 print("Reconstruction error threshold: ", threshold)
 
                 start_time = timer()
@@ -389,7 +392,7 @@ if __name__ == "__main__":
                 columns = ["Timestamp", *features]
                 input_df.columns = columns
 
-                save_dir = f"{os.getcwd()}/results/preds/{system}/"
+                save_dir = f"{os.getcwd()}/results/{data_type}/preds/{system}/"
                 os.makedirs(f"{save_dir}", exist_ok=True)
 
                 input_df.to_csv(
@@ -417,7 +420,7 @@ if __name__ == "__main__":
                 )
 
             # Get reconstruction loss threshold.
-            threshold = np.percentile(train_loss, 98.5)
+            threshold = np.percentile(train_loss, 99)
             print("Reconstruction error threshold: ", threshold)
 
             start_time = timer()
@@ -437,8 +440,8 @@ if __name__ == "__main__":
 
 
             # Save the results
-            os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
-            np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
+            # os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
+            # np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
 
             features = selected_features(system)
             inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
@@ -449,7 +452,7 @@ if __name__ == "__main__":
             columns = ["Timestamp", *features]
             input_df.columns = columns
 
-            save_dir = f"{os.getcwd()}/results/preds/{system}/"
+            save_dir = f"{os.getcwd()}/results/{data_type}/preds/{system}/"
             os.makedirs(f"{save_dir}", exist_ok=True)
 
             input_df.to_csv(

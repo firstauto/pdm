@@ -22,17 +22,18 @@ def selected_features(system):
             "Gear_Oil_Temp_Avg",
             # "Amb_WindSpeed_Avg",
             # "Amb_WindSpeed_Std",
-            # "Gen_RPM_Avg",
-            # "Gen_RPM_Std",
+            "Gen_RPM_Avg",
+            "Gen_RPM_Std",
             # "Blds_PitchAngle_Avg",
             # "Blds_PitchAngle_Std",
         ]
     elif system == "generator":
         features = [
             "Gen_Bear_Temp_Avg",
+            "Gen_Phase1_Temp_Avg",
+            "Gear_Bear_Temp_Avg",
             "Gen_RPM_Avg",
             "Gen_RPM_Std",
-            "Gen_Phase1_Temp_Avg",
             # "Gen_Phase2_Temp_Avg",
             # "Gen_Phase3_Temp_Avg",
             # "Gen_SlipRing_Temp_Avg",
@@ -88,15 +89,14 @@ def tumbling_window(data, seq_len, step_size):
     return np.array(data_seq)
 
 
-def load_data(raw_dir, data_type, features):
+def load_data(raw_dir, data_type, ID, features):
 
     df = pd.read_csv(f"{raw_dir}\\Wind-Turbine-SCADA-signals-{data_type}.csv")
     turbine_ids = list(df["Turbine_ID"].unique())
 
-    tick = "T06"
-    turbine_ids.pop(turbine_ids.index(tick))
+    turbine_ids.pop(turbine_ids.index(ID))
 
-    unmasked_df = df[df["Turbine_ID"] == tick].copy()
+    unmasked_df = df[df["Turbine_ID"] == ID].copy()
 
     # Generate histogram distribution for 'Gen_RPM_Avg'
     hist, bin_edges = np.histogram(unmasked_df['Gen_RPM_Avg'], bins=100)
@@ -105,18 +105,18 @@ def load_data(raw_dir, data_type, features):
     removed_indices = unmasked_df[unmasked_df['Gen_RPM_Avg'] <= first_bin_max].index
 
     masked_df = unmasked_df.drop(removed_indices, errors='ignore')
-    masked_time = pd.to_datetime(masked_df["Timestamp"], format="mixed")
-    masked_df = masked_df[features]
+    masked_time = pd.to_datetime(masked_df["Timestamp"], format="mixed").reset_index(drop=True)
+    masked_df = masked_df[features].reset_index(drop=True)
 
-    return masked_df, unmasked_df, masked_time, tick
+    return masked_df, unmasked_df, masked_time
 
 
 
-def data_process(raw_dir, data_type, case, seq_len, batch_size, system, val_split_ratio):
+def data_process(raw_dir, data_type, ID, case, seq_len, batch_size, system, val_split_ratio):
 
     features = selected_features(system)
 
-    masked_df, unmasked_df, masked_time, tick = load_data(raw_dir, data_type, features)
+    masked_df, unmasked_df, masked_time = load_data(raw_dir, data_type, ID, features)
     
     masked_data = to_sequences(masked_df, seq_len)
     
@@ -126,10 +126,10 @@ def data_process(raw_dir, data_type, case, seq_len, batch_size, system, val_spli
         unmasked_data = tumbling_window(unmasked_df, seq_len, seq_len)
         # test_data = to_sequences(df_turbine, seq_len)
 
-        test_dataset = ArrayDataset(unmasked_data, None, data_details=tick)
+        test_dataset = ArrayDataset(unmasked_data, None, data_details=ID)
         test_loaders = [DataLoader(test_dataset, batch_size=batch_size, shuffle=False)]
 
-        train_dataset = ArrayDataset(masked_data, None, data_details=tick)
+        train_dataset = ArrayDataset(masked_data, None, data_details=ID)
         train_loaders = [DataLoader(train_dataset, batch_size=batch_size, shuffle=True)]
 
         print(f"Test data seqs: {len(unmasked_data)}")
@@ -139,10 +139,10 @@ def data_process(raw_dir, data_type, case, seq_len, batch_size, system, val_spli
     train_data = masked_data[: int(len(masked_data) * (1 - val_split_ratio))]
     val_data = masked_data[int(len(masked_data) * (1 - val_split_ratio)) :]
 
-    train_dataset = ArrayDataset(train_data, None, data_details=tick)
+    train_dataset = ArrayDataset(train_data, None, data_details=ID)
     train_loaders = [DataLoader(train_dataset, batch_size=batch_size, shuffle=True)]
 
-    val_dataset = ArrayDataset(val_data, None, data_details=tick)
+    val_dataset = ArrayDataset(val_data, None, data_details=ID)
     val_loaders = [DataLoader(val_dataset, batch_size=batch_size, shuffle=False)]
 
     print(f"Total data seqs: {len(masked_data)} || Train data seqs: {len(train_data)} || Val data seqs: {len(val_data)}")
