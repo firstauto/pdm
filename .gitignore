@@ -3,5 +3,4 @@
 /visuals/*
 /runs
 /runs/*
-*.csv
-test.ipynb
+masking.ipynb

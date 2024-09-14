@@ -1,2 +1,2 @@
 eval "$(conda shell.bash hook)"
-conda activate exo
+conda activate turbine
