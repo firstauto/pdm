@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from pyparsing import col
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -311,16 +310,16 @@ if __name__ == "__main__":
 
             system_features = selected_features(system)
 
-            if tm == "all":
+            if tm == "latest":
 
                 output_dic, train_loss = infer_recon(model_t, train_loaders, device)
 
                 for i in range(10):
                     tack_time = train_time[i * s_len : (i + 1) * s_len]
                     plot_name = "_".join(model_parameters[:8])
-                    plot_output_recon(
-                        output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
-                    )
+                    # plot_output_recon(
+                    #     output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
+                    # )
 
                 # Get reconstruction loss threshold.
                 threshold = np.percentile(train_loss, 99)
@@ -377,7 +376,7 @@ if __name__ == "__main__":
                 for i in anomalies_indices:
                     time_stamp = test_time[i * s_len : ((i + 1) * s_len)] # type: ignore
                     plot_name = "_".join(model_parameters[:8])
-                    anomaly_plot(output_dic['inputs'], output_dic['outputs'], i, system, system_features, time_stamp, plot_name)
+                    # anomaly_plot(output_dic['inputs'], output_dic['outputs'], i, system, system_features, time_stamp, plot_name)
 
                 # Save the results
                 os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
@@ -415,9 +414,9 @@ if __name__ == "__main__":
             for i in range(5):
                 tack_time = train_time[i * s_len : (i + 1) * s_len]
                 plot_name = "_".join(model_parameters[:8])
-                plot_output_recon(
-                    output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
-                )
+                # plot_output_recon(
+                #     output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
+                # )
 
             # Get reconstruction loss threshold.
             threshold = np.percentile(train_loss, 99)
