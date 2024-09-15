@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     if args.CASE == "train":
 
-        train_loaders, val_loaders, _, total_time = data_process(
+        train_loaders, val_loaders, _, total_time, scaler_seq, scaler_tumb = data_process(
             args.RAW_DIR,
             args.DATA_TYPE,
             args.TURBINE_ID,
@@ -285,7 +285,7 @@ if __name__ == "__main__":
                 extracting_parameters(model_parameters[9:-2])
             )
 
-            test_loaders, train_loaders, test_time, train_time = data_process(
+            test_loaders, train_loaders, test_time, train_time, scaler_seq, scaler_tumb = data_process(
                 args.RAW_DIR, data_type, turbine_id, args.CASE, s_len, b_size, system, val_split
             )
 
@@ -314,9 +314,9 @@ if __name__ == "__main__":
 
                 output_dic, train_loss = infer_recon(model_t, train_loaders, device)
 
-                for i in range(10):
-                    tack_time = train_time[i * s_len : (i + 1) * s_len]
-                    plot_name = "_".join(model_parameters[:8])
+                # for i in range(10):
+                #     tack_time = train_time[i * s_len : (i + 1) * s_len]
+                #     plot_name = "_".join(model_parameters[:8])
                     # plot_output_recon(
                     #     output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
                     # )
@@ -338,7 +338,7 @@ if __name__ == "__main__":
                 anomalies = np.any(anomalies, axis=1)
                 print("Number of anomaly samples: ", np.sum(anomalies))
                 print("Indices of anomaly samples: ", np.where(anomalies)[0])
-                anomalies_indices = np.where(anomalies)[0]
+                anomalies_indices = np.where(anomalies)[0] * s_len
 
     	        ###### NOTE NOTE NOTE ######
                 ###### NOTE NOTE NOTE ######
@@ -373,19 +373,23 @@ if __name__ == "__main__":
                 ###### NOTE NOTE NOTE ######
 
                 output_dic["anomalies"] = anomalies
-                for i in anomalies_indices:
-                    time_stamp = test_time[i * s_len : ((i + 1) * s_len)] # type: ignore
-                    plot_name = "_".join(model_parameters[:8])
+                # for i in anomalies_indices:
+                #     time_stamp = test_time[i * s_len : ((i + 1) * s_len)] # type: ignore
+                #     plot_name = "_".join(model_parameters[:8])
                     # anomaly_plot(output_dic['inputs'], output_dic['outputs'], i, system, system_features, time_stamp, plot_name)
 
                 # Save the results
-                os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
-                np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
+                # os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
+                # np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
 
                 features = selected_features(system)
                 inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
                 outputs = pd.DataFrame(output_dic["outputs"].reshape(-1, len(selected_features(system))), columns=features)
                 time_stamps = pd.Series(test_time[:inputs.shape[0]]) # type: ignore
+
+                # unscale the data
+                inputs = scaler_seq.inverse_transform(inputs)
+                outputs = scaler_seq.inverse_transform(outputs)
 
                 input_df = pd.concat((time_stamps, inputs), axis=1)
                 columns = ["Timestamp", *features]
@@ -411,9 +415,9 @@ if __name__ == "__main__":
             
             output_dic, train_loss = infer_recon(model_t, train_loaders, device)
 
-            for i in range(5):
-                tack_time = train_time[i * s_len : (i + 1) * s_len]
-                plot_name = "_".join(model_parameters[:8])
+            # for i in range(5):
+            #     tack_time = train_time[i * s_len : (i + 1) * s_len]
+            #     plot_name = "_".join(model_parameters[:8])
                 # plot_output_recon(
                 #     output_dic['inputs'], output_dic['outputs'], i, system, system_features, tack_time, plot_name
                 # )
@@ -435,8 +439,9 @@ if __name__ == "__main__":
             anomalies = np.any(anomalies, axis=1)
             print("Number of anomaly samples: ", np.sum(anomalies))
             print("Indices of anomaly samples: ", np.where(anomalies)[0])
-            anomalies_indices = np.where(anomalies)[0]
+            anomalies_indices = np.where(anomalies)[0] * s_len
 
+            output_dic["anomalies"] = anomalies
 
             # Save the results
             # os.makedirs(f"{os.getcwd()}/results/{system}/anomalies/", exist_ok=True)
@@ -446,6 +451,10 @@ if __name__ == "__main__":
             inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
             outputs = pd.DataFrame(output_dic["outputs"].reshape(-1, len(selected_features(system))), columns=features)
             time_stamps = pd.Series(test_time[:inputs.shape[0]]) # type: ignore
+
+            # unscale the data
+            inputs = scaler_seq.inverse_transform(inputs)
+            outputs = scaler_seq.inverse_transform(outputs)
 
             input_df = pd.concat((time_stamps, inputs), axis=1)
             columns = ["Timestamp", *features]

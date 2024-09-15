@@ -78,7 +78,7 @@ def to_sequences(data, seq_len):
     data_seq = []
     for i in range(len(scaled_data) - seq_len + 1):
         data_seq.append(scaled_data[i : i + seq_len])
-    return np.array(data_seq)
+    return np.array(data_seq), scaler
 
 def tumbling_window(data, seq_len, step_size):
     scaler = MinMaxScaler(feature_range=(-1, 1))
@@ -86,7 +86,7 @@ def tumbling_window(data, seq_len, step_size):
     data_seq = []
     for i in range(0, len(scaled_data) - seq_len + 1, step_size):
         data_seq.append(scaled_data[i : i + seq_len])
-    return np.array(data_seq)
+    return np.array(data_seq), scaler
 
 
 def load_data(raw_dir, data_type, ID, features):
@@ -118,12 +118,12 @@ def data_process(raw_dir, data_type, ID, case, seq_len, batch_size, system, val_
 
     masked_df, unmasked_df, masked_time = load_data(raw_dir, data_type, ID, features)
     
-    masked_data = to_sequences(masked_df, seq_len)
+    masked_data, scaler_seq = to_sequences(masked_df, seq_len)
     
     if case == "test":
         unmasked_time = pd.to_datetime(unmasked_df["Timestamp"], format="mixed")
         unmasked_df = unmasked_df[features]
-        unmasked_data = tumbling_window(unmasked_df, seq_len, seq_len)
+        unmasked_data, scaler_tumb = tumbling_window(unmasked_df, seq_len, seq_len)
         # test_data = to_sequences(df_turbine, seq_len)
 
         test_dataset = ArrayDataset(unmasked_data, None, data_details=ID)
@@ -133,7 +133,7 @@ def data_process(raw_dir, data_type, ID, case, seq_len, batch_size, system, val_
         train_loaders = [DataLoader(train_dataset, batch_size=batch_size, shuffle=True)]
 
         print(f"Test data seqs: {len(unmasked_data)}")
-        return test_loaders, train_loaders, unmasked_time, masked_time
+        return test_loaders, train_loaders, unmasked_time, masked_time, scaler_tumb, scaler_seq
     
 
     train_data = masked_data[: int(len(masked_data) * (1 - val_split_ratio))]
@@ -146,7 +146,7 @@ def data_process(raw_dir, data_type, ID, case, seq_len, batch_size, system, val_
     val_loaders = [DataLoader(val_dataset, batch_size=batch_size, shuffle=False)]
 
     print(f"Total data seqs: {len(masked_data)} || Train data seqs: {len(train_data)} || Val data seqs: {len(val_data)}")
-    return train_loaders, val_loaders, None, masked_time
+    return train_loaders, val_loaders, None, masked_time, None, scaler_seq
 
 
 class ArrayDataset(Dataset):
