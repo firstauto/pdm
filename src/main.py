@@ -276,7 +276,7 @@ if __name__ == "__main__":
             model_name = model_name.name
             model_parameters = model_name.split("_")
             model = model_parameters[5][5:]
-            data_type = model_parameters[6][4:]
+            data_type = "2017" # model_parameters[6][4:]
             turbine_id = model_parameters[7][8:]
             system = model_parameters[8][6:]
             l_rate = model_parameters[-2][5:]
@@ -383,13 +383,13 @@ if __name__ == "__main__":
                 # np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
 
                 features = selected_features(system)
-                inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
-                outputs = pd.DataFrame(output_dic["outputs"].reshape(-1, len(selected_features(system))), columns=features)
+                inputs = output_dic["inputs"].reshape(-1, len(selected_features(system)))
+                outputs = output_dic["outputs"].reshape(-1, len(selected_features(system)))
                 time_stamps = pd.Series(test_time[:inputs.shape[0]]) # type: ignore
 
                 # unscale the data
-                inputs = scaler_seq.inverse_transform(inputs)
-                outputs = scaler_seq.inverse_transform(outputs)
+                inputs = pd.DataFrame(scaler_seq.inverse_transform(inputs), columns=features)
+                outputs = pd.DataFrame(scaler_seq.inverse_transform(outputs), columns=features)
 
                 input_df = pd.concat((time_stamps, inputs), axis=1)
                 columns = ["Timestamp", *features]
@@ -399,16 +399,14 @@ if __name__ == "__main__":
                 os.makedirs(f"{save_dir}", exist_ok=True)
 
                 input_df.to_csv(
-                    f"{save_dir}/{model_name[:-4]}_{tm}_input.csv",
-                    index=False,
+                    f"{save_dir}/{model_name[:-4]}_input.csv"
                 )
 
                 recon_df = pd.concat((time_stamps, outputs), axis=1)
                 recon_df.columns = columns
 
                 recon_df.to_csv(
-                    f"{save_dir}/{model_name[:-4]}_{tm}_recon.csv",
-                    index=False,
+                    f"{save_dir}/{model_name[:-4]}_recon.csv"
                 )
                 break
 
@@ -448,13 +446,13 @@ if __name__ == "__main__":
             # np.savetxt(f"{os.getcwd()}/results/{system}/anomalies/{model_name[:-4]}_indices.csv", anomalies_indices, delimiter=",")
 
             features = selected_features(system)
-            inputs = pd.DataFrame(output_dic["inputs"].reshape(-1, len(selected_features(system))), columns=features)
-            outputs = pd.DataFrame(output_dic["outputs"].reshape(-1, len(selected_features(system))), columns=features)
+            inputs = output_dic["inputs"].reshape(-1, len(selected_features(system)))
+            outputs = output_dic["outputs"].reshape(-1, len(selected_features(system)))
             time_stamps = pd.Series(test_time[:inputs.shape[0]]) # type: ignore
 
             # unscale the data
-            inputs = scaler_seq.inverse_transform(inputs)
-            outputs = scaler_seq.inverse_transform(outputs)
+            inputs = pd.DataFrame(scaler_seq.inverse_transform(inputs), columns=features)
+            outputs = pd.DataFrame(scaler_seq.inverse_transform(outputs), columns=features)
 
             input_df = pd.concat((time_stamps, inputs), axis=1)
             columns = ["Timestamp", *features]
@@ -464,14 +462,12 @@ if __name__ == "__main__":
             os.makedirs(f"{save_dir}", exist_ok=True)
 
             input_df.to_csv(
-                f"{save_dir}/{model_name[:-4]}_{tm}_input.csv",
-                index=False,
+                f"{save_dir}/{model_name[:-4]}_input.csv"
             )
 
             recon_df = pd.concat((time_stamps, outputs), axis=1)
             recon_df.columns = columns
 
             recon_df.to_csv(
-                f"{save_dir}/{model_name[:-4]}_{tm}_recon.csv",
-                index=False,
+                f"{save_dir}/{model_name[:-4]}_recon.csv"
             )

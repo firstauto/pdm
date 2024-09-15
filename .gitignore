@@ -1,5 +1,6 @@
 *.png
 *.zip
+*.pyc
 /visuals
 /visuals/*
 /runs

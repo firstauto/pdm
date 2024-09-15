@@ -336,7 +336,7 @@ def infer_recon(model, test_loaders, device):
                 loss.append(np.mean(np.abs(output.cpu().numpy() - data.cpu().numpy()), axis=1))
 
                 output_dict[batch_idx] = {"inputs": data.cpu().numpy(), "outputs": output.cpu().numpy()}
-    
+
     # Concatenate the inputs and outputs into single arrays
     inputs_concat = np.concatenate([v['inputs'] for v in output_dict.values()], axis=0)
     outputs_concat = np.concatenate([v['outputs'] for v in output_dict.values()], axis=0)
