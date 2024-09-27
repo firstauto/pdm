@@ -272,6 +272,11 @@ if __name__ == "__main__":
             "RMSE": [],
             "MAE": [],
         }
+
+            # Filter models by system and turbine ID
+        selected_system = "transformer"  # Replace with your desired system
+        selected_turbine_id = "T07"  # Replace with your desired turbine ID
+
         for model_name in model_names:
             model_name = model_name.name
             model_parameters = model_name.split("_")
@@ -281,6 +286,10 @@ if __name__ == "__main__":
             system = model_parameters[8][6:]
             l_rate = model_parameters[-2][5:]
             dropout = model_parameters[-1][7:-4]
+
+            if system != selected_system or turbine_id != selected_turbine_id:
+                continue
+
             val_split, b_size, s_len, h_size, n_layers, s_layers, e_size, n_heads = (
                 extracting_parameters(model_parameters[9:-2])
             )
